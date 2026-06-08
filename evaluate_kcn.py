@@ -1,0 +1,86 @@
+import torch
+import argparse
+from torch.utils.data import DataLoader
+from sklearn.metrics import classification_report, confusion_matrix, f1_score
+from torchvision import transforms
+from torchvision.models import convnext_tiny, ConvNeXt_Tiny_Weights
+
+# CRITICAL Imports
+from efficient_kan import KAN
+from Utils.dataclass import SkinLesionDataset
+
+# 1. The Architecture Definition (MUST match main_kcn.py)
+class ConvNeXtKAN(torch.nn.Module):
+    def __init__(self, num_classes=5, kan_hidden_dim=32):
+        super(ConvNeXtKAN, self).__init__()
+        weights = ConvNeXt_Tiny_Weights.DEFAULT
+        self.backbone = convnext_tiny(weights=weights)
+        in_features = self.backbone.classifier[2].in_features
+        self.backbone.classifier[2] = KAN([in_features, kan_hidden_dim, num_classes])
+
+    def forward(self, x):
+        return self.backbone(x)
+
+    def get_regularization_loss(self):
+        return self.backbone.classifier[2].regularization_loss()
+
+def main():
+    parser = argparse.ArgumentParser(description="Run blind evaluation on PAD-UFES-20 test set.")
+    parser.add_argument('--weights', type=str, required=True, help="Path to the locked .pth weights file")
+    args = parser.parse_args()
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"--- Running KCN Inference on {device} ---")
+    print(f"Evaluating Model Weights: {args.weights}")
+
+    # 2. Model Initialization
+    model = ConvNeXtKAN(num_classes=5, kan_hidden_dim=32)
+    model.load_state_dict(torch.load(args.weights, map_location=device))
+    model.to(device)
+    model.eval() # Freezes dropout and batchnorm
+
+    # 3. Data Paths
+    csv_path = "/scratch-shared/ttoonen/data/raw/master_metadata_split.csv"
+    data_dir = "/scratch-shared/ttoonen/data/raw/"
+
+    # 4. The Immutable Standard
+    test_transforms = transforms.Compose([
+        transforms.Resize((224, 224)), 
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
+
+    # Fix: Matching your required SkinLesionDataset initialization
+    test_dataset = SkinLesionDataset(csv_path, data_dir, 'test', test_transforms)
+    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=4)
+    print(f"Loaded {len(test_dataset)} out-of-distribution smartphone images.")
+
+    all_preds = []
+    all_labels = []
+
+    # 5. The Blind Run
+    print("Beginning KCN evaluation...")
+    with torch.no_grad():
+        for images, labels in test_loader: 
+            images, labels = images.to(device), labels.to(device)
+            outputs = model(images)
+            _, preds = torch.max(outputs, 1)
+            
+            all_preds.extend(preds.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
+
+    # 6. The Final Thesis Metrics
+    target_names = ['MEL', 'NV', 'BCC', 'BKL', 'AKIEC'] # Assumes 0=MEL, 1=NV, etc. Check your mapping!
+    
+    macro_f1 = f1_score(all_labels, all_preds, average='macro')
+    print("\n=== FINAL TEST METRICS (KCN on PAD-UFES-20) ===")
+    print(f"Macro F1 Score: {macro_f1:.4f}")
+    
+    print("\nClassification Report:")
+    print(classification_report(all_labels, all_preds, target_names=target_names))
+    
+    print("\nConfusion Matrix:")
+    print(confusion_matrix(all_labels, all_preds))
+
+if __name__ == "__main__":
+    main()

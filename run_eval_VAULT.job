@@ -1,0 +1,46 @@
+#!/bin/bash
+#SBATCH --job-name=vault_eval
+#SBATCH --partition=gpu_a100
+#SBATCH --gpus=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4     
+#SBATCH --time=04:00:00       
+#SBATCH --output=VAULT/%x_%j.out  
+#SBATCH --error=VAULT/%x_%j.err
+
+echo "--- Starting Master Vault Evaluation ---"
+echo "Allocated Node: $SLURMD_NODENAME"
+
+module load 2023
+module load Python/3.11.3-GCCcore-12.3.0
+source $SLURM_SUBMIT_DIR/thesis_env/bin/activate
+cd $SLURM_SUBMIT_DIR
+
+mkdir -p VAULT/BASELINE/Evaluations
+mkdir -p VAULT/KCN/Evaluations
+
+echo "=========================================="
+echo "EVALUATING BASELINE VAULT"
+echo "=========================================="
+for weight_file in VAULT/BASELINE/Paths/*.pth; do
+    # Extract the filename without the .pth extension
+    base_name=$(basename "$weight_file" .pth)
+    report_path="VAULT/BASELINE/Evaluations/${base_name}_report.txt"
+    
+    echo "Evaluating: $base_name"
+    # Run evaluation and pipe the output directly into a text file
+    srun python evaluate.py --weights "$weight_file" > "$report_path"
+done
+
+echo "=========================================="
+echo "EVALUATING KCN VAULT"
+echo "=========================================="
+for weight_file in VAULT/KCN/Paths/*.pth; do
+    base_name=$(basename "$weight_file" .pth)
+    report_path="VAULT/KCN/Evaluations/${base_name}_report.txt"
+    
+    echo "Evaluating: $base_name"
+    srun python evaluate_kcn.py --weights "$weight_file" > "$report_path"
+done
+
+echo "All vault evaluations complete. Check your Evaluations folders."

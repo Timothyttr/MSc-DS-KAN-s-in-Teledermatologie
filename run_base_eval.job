@@ -1,12 +1,12 @@
 #!/bin/bash
 #SBATCH --job-name=eval_vault
-#SBATCH --partition=gpu_a100
-#SBATCH --gpus=1
+#SBATCH --partition=rome
+#SBATCH --gpus=0
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4     
-#SBATCH --time=00:15:00       # Evaluation only takes a few minutes
-#SBATCH --output=logs/evaluations/eval_%j.out  
-#SBATCH --error=logs/evaluations/eval_%j.err
+#SBATCH --time=00:15:00       
+#SBATCH --output=logs/Baseline_Evaluations/40_ep/eval_%j.out  
+#SBATCH --error=logs/Baseline_Evaluations/40_ep/eval_%j.err
 
 echo "--- Starting Evaluation SLURM Job ---"
 echo "Allocated Node: $SLURMD_NODENAME"

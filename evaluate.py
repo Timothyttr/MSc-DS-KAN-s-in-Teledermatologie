@@ -1,19 +1,23 @@
 import torch
 import pandas as pd
 import argparse
+import numpy as np
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
-from sklearn.metrics import classification_report, confusion_matrix, f1_score
+from sklearn.metrics import classification_report, confusion_matrix, f1_score, balanced_accuracy_score, roc_auc_score
 from torchvision import models, transforms
 
-# CRITICAL: You must import your dataset class and transforms here
 from Utils.dataclass import SkinLesionDataset
 
-def get_baseline(num_classes=5):
-    # Standard ConvNeXt-Tiny
+def get_baseline(num_classes=5, dropout_p=0.5):
+    #convnext_tiny
     model = models.convnext_tiny(weights=None) 
     in_features = model.classifier[2].in_features
 
-    model.classifier[2] = torch.nn.Linear(model.classifier[2].in_features, num_classes)
+    model.classifier[2] = torch.nn.Sequential(
+        torch.nn.Dropout(p=dropout_p),
+        torch.nn.Linear(in_features, num_classes)
+    )
     return model
 
 def main():
@@ -25,7 +29,7 @@ def main():
     print(f"--- Running Inference on {device} ---")
     print(f"Evaluating Model Weights: {args.weights}")
 
-    model = get_model(num_classes=5)
+    model = get_baseline(num_classes=5)
     model.load_state_dict(torch.load(args.weights, map_location=device))
     model.to(device)
     model.eval() 
@@ -47,26 +51,40 @@ def main():
 
     all_preds = []
     all_labels = []
+    all_probs = []
 
     print("Beginning baseline eval.")
     with torch.no_grad():
         for images, labels in test_loader: 
             images, labels = images.to(device), labels.to(device)
             outputs = model(images)
+            
+            # Extract probabilities and predictions
+            probs = F.softmax(outputs, dim=1)
             _, preds = torch.max(outputs, 1)
             
             all_preds.extend(preds.cpu().numpy())
             all_labels.extend(labels.cpu().numpy())
+            all_probs.extend(probs.cpu().numpy())
 
+    all_probs = np.array(all_probs)
     target_names = ['MEL', 'NV', 'BCC', 'BKL', 'AKIEC']
     
     macro_f1 = f1_score(all_labels, all_preds, average='macro')
-    print("\n=== FINAL TEST METRICS (PAD-UFES-20) ===")
-    print(f"Macro F1 Score: {macro_f1:.4f}")
+    weighted_f1 = f1_score(all_labels, all_preds, average='weighted')
+    bal_acc = balanced_accuracy_score(all_labels, all_preds)
+    macro_roc_auc = roc_auc_score(all_labels, all_probs, multi_class='ovr', average='macro')
+
+    print("\n=== FINAL TEST METRICS (Baseline on PAD-UFES-20) ===")
+    print(f"Macro F1 Score:      {macro_f1:.4f}")
+    print(f"Weighted F1 Score:   {weighted_f1:.4f}")
+    print(f"Balanced Accuracy:   {bal_acc:.4f}")
+    print(f"Macro ROC-AUC:       {macro_roc_auc:.4f}")
+    
     print("\nConfusion Matrix:")
     print(confusion_matrix(all_labels, all_preds))
     print("\nClassification Report:")
-    print(classification_report(all_labels, all_preds))
+    print(classification_report(all_labels, all_preds, target_names=target_names, digits=4))
 
 if __name__ == "__main__":
     main()

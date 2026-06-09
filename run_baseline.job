@@ -1,12 +1,12 @@
 #!/bin/bash
 #SBATCH --job-name=baseline_cv
-#SBATCH --partition=gpu_a100
+#SBATCH --partition=gpu_h100
 #SBATCH --gpus=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4     
 #SBATCH --time=04:00:00    
-#SBATCH --output=logs/baseline_%j.out  
-#SBATCH --error=logs/baseline_%j.err
+#SBATCH --output=VAULT/BASELINE/baseline_Uncon.out  
+#SBATCH --error=VAULT/BASELINE/baseline_Uncon.err
 
 echo "--- Starting SLURM Job ---"
 echo "Allocated Node: $SLURMD_NODENAME"
@@ -19,14 +19,13 @@ source $SLURM_SUBMIT_DIR/thesis_env/bin/activate
 
 cd $SLURM_SUBMIT_DIR
 
-mkdir -p logs/${SLURM_JOB_ID}
+mkdir -p VAULT/BASELINE/
 
-WEIGHT_FILE="logs/${SLURM_JOB_ID}/40_convnext_baseline.pth"
+BASE_PATH="VAULT/BASELINE/baseline_Uncon"
+WEIGHT_FILE="${BASE_PATH}.pth"
 
-# 4. Execute the Conductor Script
-# Note: Double check that your data_dir points to where you rsync'd the images!
 srun python main.py \
-    --epochs 40 \
+    --epochs 20 \
     --batch_size 32 \
     --lr 1e-4 \
     --num_workers 4 \

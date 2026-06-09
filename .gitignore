@@ -1,1 +1,6 @@
 logs/
+VAULT/
+thesis_env/
+__pycache__/
+Utils/__pycache__/
+*.pth

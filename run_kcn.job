@@ -1,12 +1,12 @@
 #!/bin/bash
 #SBATCH --job-name=kcn_cv
-#SBATCH --partition=gpu_a100
+#SBATCH --partition=gpu_h100
 #SBATCH --gpus=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4     
 #SBATCH --time=04:00:00    
-#SBATCH --output=logs/kcn_%j.out  
-#SBATCH --error=logs/kcn_%j.err
+#SBATCH --output=VAULT/KCN/kcn_Uncon.out  
+#SBATCH --error=VAULT/KCN/kcn_Uncon.err
 
 echo "--- Starting KCN SLURM Job ---"
 echo "Allocated Node: $SLURMD_NODENAME"
@@ -18,15 +18,14 @@ module load Python/3.11.3-GCCcore-12.3.0
 source $SLURM_SUBMIT_DIR/thesis_env/bin/activate
 cd $SLURM_SUBMIT_DIR
 
-mkdir -p logs/10_epochs_kcn
-WEIGHT_FILE="logs/10_epochs_kcn/10_epochs_kcn.pth"
+mkdir -p VAULT/KCN/
+WEIGHT_FILE="VAULT/KCN/kcn_Uncon.pth"
 
 # Execute the KCN Training Script
 srun python main_kcn.py \
-    --epochs 10 \
+    --epochs 20 \
     --batch_size 32 \
     --lr 1e-4 \
-    --reg_weight 1e-4 \
     --data_dir "/scratch-shared/$USER/data/raw/" \
     --csv_path "/scratch-shared/$USER/data/raw/master_metadata_split.csv" \
     --save_path "$WEIGHT_FILE"

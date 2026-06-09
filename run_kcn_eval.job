@@ -1,12 +1,12 @@
 #!/bin/bash
 #SBATCH --job-name=eval_vault
 #SBATCH --partition=gpu_a100
-#SBATCH --gpus=1
+#SBATCH --gpus=0
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4     
 #SBATCH --time=00:15:00       # Evaluation only takes a few minutes
-#SBATCH --output=logs/eval_%j.out  
-#SBATCH --error=logs/eval_%j.err
+#SBATCH --output=logs/KCN_Evaluations/eval_drop.out  
+#SBATCH --error=logs/KCN_Evaluations/val_drop.err
 
 echo "--- Starting Evaluation SLURM Job ---"
 echo "Allocated Node: $SLURMD_NODENAME"
@@ -20,7 +20,7 @@ cd $SLURM_SUBMIT_DIR
 EVAL_SCRIPT="evaluate_kcn.py"
 
 # Paste the exact path to the .pth file you want to unlock
-WEIGHT_FILE="logs/kcn_23426428.pth"
+WEIGHT_FILE="logs/KCN/Tuning/20_epochs_kcn_1e3+drop.pth"
 
 # ==========================================
 

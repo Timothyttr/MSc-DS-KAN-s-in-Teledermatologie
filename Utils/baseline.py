@@ -52,6 +52,10 @@ def validate_epoch(model, dataloader, criterion, device):
 def run_training_pipeline(model, train_loader, val_loader, criterion, optimizer, device, epochs, save_path):
     print(f"\n--- Starting ConvNeXt Baseline Training on {device} ---")
     best_val_f1 = 0.0
+    best_val_loss = float('inf')
+
+    loss_save_path = save_path.replace('.pth', '_best_loss.pth')
+    f1_save_path = save_path.replace('.pth', '_best_f1.pth')
     
     for epoch in range(epochs):
         start_time = time.time()
@@ -65,7 +69,12 @@ def run_training_pipeline(model, train_loader, val_loader, criterion, optimizer,
         print(f"  Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}%")
         print(f"  Val Loss:   {val_loss:.4f} | Val Acc:   {val_acc:.2f}% | Val Macro F1: {val_f1:.4f}")
         
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            torch.save(model.state_dict(), loss_save_path)
+            print(f"  --> Generalization Checkpoint Saved! (Best Loss: {best_val_loss:.4f} | F1: {val_f1})")
+            
         if val_f1 > best_val_f1:
             best_val_f1 = val_f1
-            torch.save(model.state_dict(), save_path)
-            print(f"  --> Weights saved! (New Best Val F1: {best_val_f1:.4f})")
+            torch.save(model.state_dict(), f1_save_path)
+            print(f"  --> Accuracy Checkpoint Saved! (Best F1: {best_val_f1:.4f} | Val Loss: {val_loss})")

@@ -7,10 +7,6 @@ from pytorch_grad_cam.utils.image import show_cam_on_image
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
 
 def generate_gradcam(model, image_tensor, original_rgb_image, target_class_idx, save_name="gradcam.png"):
-    """
-    image_tensor: Normalized tensor of shape (1, 3, 224, 224) going into the model
-    original_rgb_image: Unnormalized numpy array (224, 224, 3) with values 0-1 for visualization
-    """
     model.eval()
     
     # ConvNeXt architectures typically hold their final convolutional blocks in features[-1]

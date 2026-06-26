@@ -2,6 +2,7 @@ import torch
 import pandas as pd
 import argparse
 import numpy as np
+import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from sklearn.metrics import classification_report, confusion_matrix, f1_score, balanced_accuracy_score, roc_auc_score
@@ -13,6 +14,7 @@ def get_baseline(num_classes=5, dropout_p=0.5):
     #convnext_tiny
     model = models.convnext_tiny(weights=None) 
     in_features = model.classifier[2].in_features
+    # model.classifier[2] = nn.Linear(model.classifier[2].in_features, 5)
 
     model.classifier[2] = torch.nn.Sequential(
         torch.nn.Dropout(p=dropout_p),

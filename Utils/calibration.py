@@ -4,10 +4,6 @@ import torch
 import torch.nn.functional as F
 
 def plot_calibration_curve(y_true, y_logits, num_bins=10, save_name="calibration.png"):
-    """
-    y_true: Array of true class indices
-    y_logits: Array of raw model outputs (before softmax)
-    """
     print("Calculating Confidence Calibration...")
     
     # Convert logits to probabilities
@@ -33,17 +29,15 @@ def plot_calibration_curve(y_true, y_logits, num_bins=10, save_name="calibration
             bin_confidences[b-1] = np.mean(confidences[mask])
             bin_counts[b-1] = np.sum(mask)
             
-            # Calculate ECE weighting
+            # ECE
             prob_in_bin = bin_counts[b-1] / len(confidences)
             ece += prob_in_bin * np.abs(bin_accuracies[b-1] - bin_confidences[b-1])
             
     print(f"Expected Calibration Error (ECE): {ece:.4f}")
     
-    # Plotting
     plt.figure(figsize=(8, 8))
     plt.plot([0, 1], [0, 1], linestyle='--', color='gray', label='Perfectly Calibrated')
-    
-    # Filter out empty bins for plotting
+
     valid_bins = bin_counts > 0
     plt.plot(bin_confidences[valid_bins], bin_accuracies[valid_bins], marker='o', linewidth=2, label=f'Model (ECE: {ece:.4f})')
     

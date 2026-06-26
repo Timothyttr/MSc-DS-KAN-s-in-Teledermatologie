@@ -22,7 +22,6 @@ class SkinLesionDataset(Dataset):
         return len(self.df)
 
     def __getitem__(self, idx):
-        # Get filename and label
         img_filename = self.df.loc[idx, 'image_id']
         string_label = str(self.df.loc[idx, 'label']).upper()
         dataset_domain = self.df.loc[idx, 'domain']

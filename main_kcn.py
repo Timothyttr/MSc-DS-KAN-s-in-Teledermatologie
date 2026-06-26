@@ -1,39 +1,41 @@
 import os
 import argparse
 import torch
+import numpy as np
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from torchvision.models import convnext_tiny, ConvNeXt_Tiny_Weights
 from sklearn.metrics import f1_score, accuracy_score
+from sklearn.utils.class_weight import compute_class_weight
 from efficient_kan import KAN 
 
 from Utils.dataclass import SkinLesionDataset
 
 # KCN framework
 class ConvNeXtKAN(nn.Module):
-    def __init__(self, num_classes=5, kan_hidden_dim=32, dropout_p=0.5):
+    def __init__(self, num_classes=5, kan_hidden_dim=32):
         super(ConvNeXtKAN, self).__init__()
 
         weights = ConvNeXt_Tiny_Weights.DEFAULT
         self.backbone = convnext_tiny(weights=weights)
         in_features = self.backbone.classifier[2].in_features
-        # self.backbone.classifier[2] = KAN([in_features, kan_hidden_dim, num_classes])
+        self.backbone.classifier[2] = KAN([in_features, kan_hidden_dim, num_classes])
 
-        self.classifier_head = nn.Sequential(
-            nn.Dropout(p=dropout_p),
-            KAN([in_features, kan_hidden_dim, num_classes])
-        )
+        # self.classifier_head = nn.Sequential(
+        #     nn.Dropout(p=dropout_p),
+        #     KAN([in_features, kan_hidden_dim, num_classes])
+        # )
 
-        self.backbone.classifier[2] = self.classifier_head
+        # self.backbone.classifier[2] = self.classifier_head
 
     def forward(self, x):
         return self.backbone(x)
 
     def get_regularization_loss(self):
-        # return self.backbone.classifier[2].regularization_loss()
-        return self.backbone.classifier[2][1].regularization_loss()
+        return self.backbone.classifier[2].regularization_loss()
+        # return self.backbone.classifier[2][1].regularization_loss()
 
 def main():
     parser = argparse.ArgumentParser()
@@ -74,13 +76,18 @@ def main():
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=4)
 
     # Model & Optimization
-    model = ConvNeXtKAN(num_classes=5, kan_hidden_dim=32, dropout_p=args.dropout).to(device)
-    # model = ConvNeXtKAN(num_classes=5, kan_hidden_dim=32).to(device)
+    # model = ConvNeXtKAN(num_classes=5, kan_hidden_dim=32, dropout_p=args.dropout).to(device)
+    model = ConvNeXtKAN(num_classes=5, kan_hidden_dim=32).to(device)
 
-    criterion = nn.CrossEntropyLoss()
+    # Balance weights
+    y_train = train_dataset.df['label'].map({'MEL': 0, 'NV': 1, 'BCC': 2, 'BKL': 3, 'AKIEC': 4}).values
+    class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(y_train), y=y_train)
+    weights_tensor = torch.tensor(class_weights, dtype=torch.float32).to(device)
 
-    # optimizer = optim.AdamW(model.parameters(), lr=args.lr)
-    optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    criterion = nn.CrossEntropyLoss(weight=weights_tensor)
+
+    optimizer = optim.AdamW(model.parameters(), lr=args.lr)
+    # optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
     best_val_f1 = 0.0
     best_val_loss = float('inf')
@@ -88,7 +95,6 @@ def main():
     loss_save_path = args.save_path.replace('.pth', '_best_loss.pth')
     f1_save_path = args.save_path.replace('.pth', '_best_f1.pth')
 
-    # KCN Training Loop
     for epoch in range(args.epochs):
         model.train()
         train_loss = 0.0
@@ -100,8 +106,7 @@ def main():
             optimizer.zero_grad()
             
             outputs = model(images)
-            
-            # KAN PENALTY: Standard Loss + (Regularization Weight * Spline Penalty)
+
             ce_loss = criterion(outputs, labels)
             reg_loss = model.get_regularization_loss()
             loss = ce_loss + (args.reg_weight * reg_loss)
@@ -114,7 +119,6 @@ def main():
             train_correct += torch.sum(preds == labels.data).item()
             train_total += labels.size(0)
 
-        # Validation
         model.eval()
         val_preds, val_labels = [], []
         val_loss = 0.0

@@ -1,6 +1,7 @@
 import torch
 import argparse
 import numpy as np
+import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from sklearn.metrics import classification_report, confusion_matrix, f1_score, balanced_accuracy_score, roc_auc_score
@@ -10,26 +11,49 @@ from torchvision.models import convnext_tiny, ConvNeXt_Tiny_Weights
 from efficient_kan import KAN
 from Utils.dataclass import SkinLesionDataset
 
-class ConvNeXtKAN(torch.nn.Module):
-    def __init__(self, num_classes=5, kan_hidden_dim=32, dropout_p=0.5):
+# class ConvNeXtKAN(torch.nn.Module):
+#     def __init__(self, num_classes=5, kan_hidden_dim=32, dropout_p=0.5):
+#         super(ConvNeXtKAN, self).__init__()
+
+#         weights = ConvNeXt_Tiny_Weights.DEFAULT
+#         self.backbone = convnext_tiny(weights=weights)
+#         in_features = self.backbone.classifier[2].in_features
+
+#         self.classifier_head = torch.nn.Sequential(
+#             torch.nn.Dropout(p=dropout_p),
+#             KAN([in_features, kan_hidden_dim, num_classes])
+#         )
+
+#         self.backbone.classifier[2] = self.classifier_head
+
+#     def forward(self, x):
+#         return self.backbone(x)
+
+#     def get_regularization_loss(self):
+#         return self.backbone.classifier[2][1].regularization_loss()
+
+class ConvNeXtKAN(nn.Module):
+    def __init__(self, num_classes=5, kan_hidden_dim=32):
         super(ConvNeXtKAN, self).__init__()
 
         weights = ConvNeXt_Tiny_Weights.DEFAULT
         self.backbone = convnext_tiny(weights=weights)
         in_features = self.backbone.classifier[2].in_features
+        self.backbone.classifier[2] = KAN([in_features, kan_hidden_dim, num_classes])
 
-        self.classifier_head = torch.nn.Sequential(
-            torch.nn.Dropout(p=dropout_p),
-            KAN([in_features, kan_hidden_dim, num_classes])
-        )
+        # self.classifier_head = nn.Sequential(
+        #     nn.Dropout(p=dropout_p),
+        #     KAN([in_features, kan_hidden_dim, num_classes])
+        # )
 
-        self.backbone.classifier[2] = self.classifier_head
+        # self.backbone.classifier[2] = self.classifier_head
 
     def forward(self, x):
         return self.backbone(x)
 
     def get_regularization_loss(self):
-        return self.backbone.classifier[2][1].regularization_loss()
+        return self.backbone.classifier[2].regularization_loss()
+        # return self.backbone.classifier[2][1].regularization_loss()
 
 def main():
     parser = argparse.ArgumentParser(description="Run blind evaluation on PAD-UFES-20 test set.")

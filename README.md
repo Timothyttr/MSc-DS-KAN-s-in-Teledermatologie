@@ -6,9 +6,7 @@ Official repository for the Master's thesis investigating the use of Kolmogorov-
 
 ## Installation
 Ensure you are running a Python 3.10+ environment. Install all required dependencies before executing any scripts:
-```bash
-pip install -r requirements.txt
-```
+install -r requirements.txt
 
 Usage
 ## Training

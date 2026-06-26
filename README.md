@@ -1,5 +1,3 @@
-Markdown
-
 # MSc Data Science: KANs in Teledermatology
 
 Official repository for the Master's thesis investigating the use of Kolmogorov-Arnold Convolutional Networks (KCNs) to mitigate domain shift in teledermatology. 

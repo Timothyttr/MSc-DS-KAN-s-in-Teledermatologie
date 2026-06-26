@@ -20,7 +20,6 @@ main_kcn.py
 ## Evaluation
 
 To run the evaluation suite and extract metrics for your trained models:
-Bash
 
 # Evaluate Baseline models
 evaluate.py 
@@ -31,7 +30,6 @@ evaluate_kcn.py
 HPC Cluster Execution (Snellius)
 
 This framework is fully compatible with SLURM workload managers. You can submit training and evaluation scripts in batches on supercomputers (e.g., the Snellius cluster) using standard sbatch commands:
-Bash
 
 sbatch [script.job]
 
